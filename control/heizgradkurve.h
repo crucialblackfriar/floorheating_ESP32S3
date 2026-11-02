@@ -1,27 +1,35 @@
 #pragma once
 
 #include <stdint.h>
-#include "config.h"
 
-// Heizgradkurve: Berechnet Vorlauftemperatur basierend auf Außentemperatur
+// Heating curve (Heizkurve) implementation
+// Maps outdoor temperature to flow (supply) temperature using linear interpolation
 class HeizgradKurve {
 public:
     static HeizgradKurve& getInstance();
     
-    // Initialisierung der Kurvenparameter
-    bool initialize();
+    // Initialize with curve parameters
+    // outdoor_min/max: outdoor temperature range [°C]
+    // flow_min/max: corresponding flow temperature range [°C]
+    // shift: curve shift parameter (affects aggressiveness)
+    bool initialize(float outdoor_min, float outdoor_max,
+                   float flow_min, float flow_max,
+                   float shift);
     
-    // Berechne Sollvorlauftemperatur aus Außentemperatur
-    // Implementiert: Linear (Heizkurve)
+    // Calculate target flow temperature based on outdoor temperature
+    // outdoor_temp: current outdoor temperature [°C]
+    // Returns: target flow temperature [°C]
     float calculateFlowTemperature(float outdoor_temp);
     
-    // Setze Kurven-Parameter (für Anpassung zur Laufzeit)
-    void setCurveParameters(float outdoor_min, float outdoor_max,
-                           float flow_min, float flow_max, float shift);
+    // Set curve parameters at runtime
+    void setParameters(float outdoor_min, float outdoor_max,
+                      float flow_min, float flow_max,
+                      float shift);
     
-    // Minimale und maximale Vorlauftemperatur
-    float getFlowTempMin() const;
-    float getFlowTempMax() const;
+    // Get current curve parameters
+    void getParameters(float& outdoor_min, float& outdoor_max,
+                      float& flow_min, float& flow_max,
+                      float& shift) const;
 
 private:
     HeizgradKurve() = default;
@@ -29,10 +37,10 @@ private:
     HeizgradKurve(const HeizgradKurve&) = delete;
     void operator=(const HeizgradKurve&) = delete;
     
-    float _outdoor_min = HEATING_CURVE_OUTDOOR_MIN;
-    float _outdoor_max = HEATING_CURVE_OUTDOOR_MAX;
-    float _flow_min = HEATING_CURVE_FLOW_MIN;
-    float _flow_max = HEATING_CURVE_FLOW_MAX;
-    float _shift = HEATING_CURVE_SHIFT;
+    float _outdoor_min = -15.0f;
+    float _outdoor_max = 20.0f;
+    float _flow_min = 20.0f;
+    float _flow_max = 60.0f;
+    float _shift = 0.5f;
     bool _initialized = false;
 };
