@@ -63,4 +63,13 @@ private:
     float _outdoor_temperature = 10.0f;
     uint32_t _flow_temp_last_update = 0;
     uint32_t _outdoor_temp_last_update = 0;
-    uint8_t _num_heizkreise =
+    uint8_t _num_heizkreise = 0;
+    uint32_t _last_global_update_time = 0;
+    bool _initialized = false;
+    
+    // JSON buffer for web interface
+    char _json_buffer[2048];
+    
+    // Internal: validate sensor reading
+    bool _isValidTemperatureReading(float temp) const;
+};
