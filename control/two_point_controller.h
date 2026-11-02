@@ -5,23 +5,40 @@
 #include "config.h"
 #include "heizkreis.h"
 
-// Zweipunkt-Regler mit Hysterese für die innere Regelschleife
+// Central two-point controller managing all heating circuits and pump
+// Coordinates valve switching, hysteresis logic, and pump control
 class TwoPointController {
 public:
     static TwoPointController& getInstance();
     
-    // Initialisierung mit allen Heizkreisen
-    bool initialize(std::vector<Heizkreis>* heizkreise);
+    // Initialize with number of circuits
+    bool initialize(uint8_t num_heizkreise);
     
-    // Regelschleife ausführen (wird zyklisch alle ~100ms aufgerufen)
-    void update(float vorlauf_temp, float* return_temps, 
-                float outdoor_temp, float* room_temps);
+    // Main control loop update (call periodically)
+    // Parameters:
+    //   room_temps: current room temperatures [°C]
+    //   setpoints: target room temperatures [°C]
+    //   return_temps: return water temperatures [°C]
+    //   flow_temp: flow (supply) water temperature [°C]
+    void update(const float* room_temps, const float* setpoints,
+               const float* return_temps, float flow_temp);
     
-    // Pumpe-Management: Schalte Pumpe ab wenn alle Ventile geschlossen
-    bool shouldPumpBeOn();
+    // Set target temperature for a circuit
+    void setSetpoint(uint8_t heizkreis_id, float setpoint_celsius);
     
-    // Debug-Ausgabe
-    void printStatus();
+    // Get circuit state
+    HeizkreisState getCircuitState(uint8_t heizkreis_id) const;
+    bool isCircuitValveOpen(uint8_t heizkreis_id) const;
+    float getCircuitReturnTemperature(uint8_t heizkreis_id) const;
+    
+    // Pump control
+    bool isPumpRunning() const;
+    
+    // Emergency shutdown
+    void emergencyStop();
+    
+    // Get active circuit count (circuits with open valves)
+    uint8_t getActiveCircuitCount() const;
 
 private:
     TwoPointController() = default;
@@ -29,7 +46,16 @@ private:
     TwoPointController(const TwoPointController&) = delete;
     void operator=(const TwoPointController&) = delete;
     
-    std::vector<Heizkreis>* _heizkreise = nullptr;
-    bool _pump_on = false;
-    uint32_t _pump_switch_time = 0;
+    std::vector<Heizkreis> _heizkreise;
+    uint8_t _num_heizkreise = 0;
+    bool _pump_running = false;
+    uint32_t _pump_shutdown_requested_time = 0;
+    bool _initialized = false;
+    uint32_t _last_update_time = 0;
+    
+    // Internal: check and update pump state
+    void _updatePumpState();
+    
+    // Internal: determine if pump should run
+    bool _shouldPumpRun() const;
 };
