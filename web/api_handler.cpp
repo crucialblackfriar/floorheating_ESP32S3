@@ -1,27 +1,33 @@
-#pragma once
+#include "api_handler.h"
+#include "logging/logger.h"
+#include "system/data_manager.h"
+#include "control/two_point_controller.h"
+#include <cstring>
+#include <cstdio>
 
-#include <stdint.h>
-#include "esp_http_server.h"
+static const char* TAG = "APIHandler";
 
-// REST API handler for web interface
-class APIHandler {
-public:
-    static APIHandler& getInstance();
-    
-    // Register API endpoints with HTTP server
-    bool registerEndpoints(httpd_handle_t server);
-    
-    // API response handlers
-    static esp_err_t handleGetSensors(httpd_req_t* req);
-    static esp_err_t handleGetStatus(httpd_req_t* req);
-    static esp_err_t handleSetSetpoint(httpd_req_t* req);
-    static esp_err_t handleGetConfig(httpd_req_t* req);
+APIHandler& APIHandler::getInstance() {
+    static APIHandler instance;
+    return instance;
+}
 
-private:
-    APIHandler() = default;
-    ~APIHandler() = default;
-    APIHandler(const APIHandler&) = delete;
-    void operator=(const APIHandler&) = delete;
+bool APIHandler::registerEndpoints(httpd_handle_t server) {
+    if (!server || _registered) {
+        return false;
+    }
     
-    bool _registered = false;
-};
+    Logger::log(TAG, "Registriere API-Endpoints");
+    
+    // GET /api/sensors - Read sensor values
+    httpd_uri_t get_sensors = {
+        .uri = "/api/sensors",
+        .method = HTTP_GET,
+        .handler = handleGetSensors,
+        .user_ctx = nullptr
+    };
+    httpd_register_uri_handler(server, &get_sensors);
+    
+    // GET /api/status - System status
+    httpd_uri_t get_status =
+// rest is missing
