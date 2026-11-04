@@ -512,5 +512,264 @@
             flowTempElem.innerHTML = data.flow_temperature.toFixed(TEMP_PRECISION) + ' <span style="font-size: 0.7em;">°C</span>';
             
             const flowIcon = document.getElementById('flowSensorIcon');
-
-// REST is missing
+            updateSensorIcon(flowIcon, data.flow_sensor_valid);
+            
+            // Outdoor temperature
+            const outdoorTempElem = document.getElementById('outdoorTemp');
+            outdoorTempElem.innerHTML = data.outdoor_temperature.toFixed(TEMP_PRECISION) + ' <span style="font-size: 0.7em;">°C</span>';
+            
+            const outdoorIcon = document.getElementById('outdoorSensorIcon');
+            updateSensorIcon(outdoorIcon, data.outdoor_sensor_valid);
+            
+            // Target flow temperature
+            const targetFlowElem = document.getElementById('targetFlowTemp');
+            targetFlowElem.innerHTML = data.target_flow_temperature.toFixed(TEMP_PRECISION) + ' <span style="font-size: 0.7em;">°C</span>';
+        }
+        
+        // Render circuit cards dynamically
+        function renderCircuits() {
+            const container = document.getElementById('circuitsContainer');
+            container.innerHTML = '';
+            
+            for (let i = 0; i < config.num_heizkreise; i++) {
+                const card = document.createElement('div');
+                card.className = 'circuit-card';
+                card.id = `circuit-${i}`;
+                card.innerHTML = `
+                    <div class="circuit-header">
+                        <div class="circuit-title">Heizkreis ${i + 1}</div>
+                        <div class="valve-indicator closed" id="valve-${i}">GESCHLOSSEN</div>
+                    </div>
+                    
+                    <div class="temperature-display">
+                        <div class="temp-box">
+                            <div class="temp-label">Raumtemperatur</div>
+                            <div class="temp-value">
+                                <span id="room-temp-${i}">-- </span>
+                                <span class="temp-unit">°C</span>
+                            </div>
+                            <div class="sensor-status" id="room-sensor-${i}">✓ OK</div>
+                        </div>
+                        
+                        <div class="temp-box">
+                            <div class="temp-label">Rücklauftemperatur</div>
+                            <div class="temp-value">
+                                <span id="return-temp-${i}">-- </span>
+                                <span class="temp-unit">°C</span>
+                            </div>
+                            <div class="sensor-status" id="return-sensor-${i}">✓ OK</div>
+                        </div>
+                    </div>
+                    
+                    <div class="temperature-display">
+                        <div class="temp-box">
+                            <div class="temp-label">Solltemperatur</div>
+                            <div class="temp-value">
+                                <span id="setpoint-${i}">-- </span>
+                                <span class="temp-unit">°C</span>
+                            </div>
+                        </div>
+                        
+                        <div class="temp-box">
+                            <div class="temp-label">Differenz (Ist-Soll)</div>
+                            <div class="temp-value">
+                                <span id="temp-diff-${i}">-- </span>
+                                <span class="temp-unit">°C</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="control-section">
+                        <div class="setpoint-control">
+                            <label class="setpoint-label" for="setpoint-input-${i}">Neue Solltemp.:</label>
+                            <input 
+                                type="number" 
+                                id="setpoint-input-${i}" 
+                                class="setpoint-input"
+                                min="${config.setpoint_min}"
+                                max="${config.setpoint_max}"
+                                step="0.5"
+                                placeholder="Solltemperatur eingeben"
+                            >
+                            <button class="setpoint-button" onclick="setSetpoint(${i})">Setzen</button>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            }
+        }
+        
+        // Update circuit cards with current data
+        function updateCircuitCards(data) {
+            data.circuits.forEach((circuit, index) => {
+                // Room temperature
+                document.getElementById(`room-temp-${index}`).textContent = 
+                    circuit.room_temperature.toFixed(TEMP_PRECISION);
+                updateSensorStatus(`room-sensor-${index}`, circuit.room_sensor_valid);
+                
+                // Return temperature
+                document.getElementById(`return-temp-${index}`).textContent = 
+                    circuit.return_temperature.toFixed(TEMP_PRECISION);
+                updateSensorStatus(`return-sensor-${index}`, circuit.return_sensor_valid);
+                
+                // Setpoint
+                document.getElementById(`setpoint-${index}`).textContent = 
+                    circuit.setpoint.toFixed(TEMP_PRECISION);
+                
+                // Temperature difference
+                document.getElementById(`temp-diff-${index}`).textContent = 
+                    circuit.temperature_difference.toFixed(TEMP_PRECISION);
+                
+                // Valve state
+                const valveElem = document.getElementById(`valve-${index}`);
+                if (circuit.valve_open) {
+                    valveElem.textContent = 'OFFEN';
+                    valveElem.className = 'valve-indicator open';
+                } else {
+                    valveElem.textContent = 'GESCHLOSSEN';
+                    valveElem.className = 'valve-indicator closed';
+                }
+            });
+        }
+        
+        // Render heating curve configuration
+        function renderHeatingCurveConfig() {
+            const container = document.getElementById('heatingCurveData');
+            const hgk = config.heating_curve;
+            
+            container.innerHTML = `
+                <div class="data-item">
+                    <div class="data-label">Außentemp. Min</div>
+                    <div class="data-value">${hgk.outdoor_min.toFixed(1)}°C</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">Außentemp. Max</div>
+                    <div class="data-value">${hgk.outdoor_max.toFixed(1)}°C</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">Vorlauf Min</div>
+                    <div class="data-value">${hgk.flow_min.toFixed(1)}°C</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">Vorlauf Max</div>
+                    <div class="data-value">${hgk.flow_max.toFixed(1)}°C</div>
+                </div>
+                <div class="data-item">
+                    <div class="data-label">Kurvenversatz</div>
+                    <div class="data-value">${hgk.shift.toFixed(2)}</div>
+                </div>
+            `;
+        }
+        
+        // Update system status grid
+        function updateSystemStatus(data) {
+            const container = document.getElementById('systemStatusGrid');
+            container.innerHTML = `
+                <div class="status-card ${data.flow_sensor_valid ? '' : 'error'}">
+                    <h4>Vorlaufsensor</h4>
+                    <p>${data.flow_sensor_valid ? '✓ OK' : '✗ Fehler'}</p>
+                </div>
+                <div class="status-card ${data.outdoor_sensor_valid ? '' : 'error'}">
+                    <h4>Außensensor</h4>
+                    <p>${data.outdoor_sensor_valid ? '✓ OK' : '✗ Fehler'}</p>
+                </div>
+                <div class="status-card">
+                    <h4>Aktive Heizkreise</h4>
+                    <p>${data.circuits.filter(c => c.valve_open).length} / ${config.num_heizkreise}</p>
+                </div>
+                <div class="status-card">
+                    <h4>Systemtemperatur</h4>
+                    <p>${data.flow_temperature.toFixed(1)}°C</p>
+                </div>
+            `;
+        }
+        
+        // Update sensor status indicator
+        function updateSensorStatus(elemId, isValid) {
+            const elem = document.getElementById(elemId);
+            if (isValid) {
+                elem.textContent = '✓ OK';
+                elem.classList.remove('invalid');
+            } else {
+                elem.textContent = '✗ Fehler';
+                elem.classList.add('invalid');
+            }
+        }
+        
+        // Update sensor icon
+        function updateSensorIcon(elem, isValid) {
+            if (isValid) {
+                elem.classList.add('valid');
+                elem.classList.remove('invalid');
+                elem.textContent = '✓';
+            } else {
+                elem.classList.add('invalid');
+                elem.classList.remove('valid');
+                elem.textContent = '✗';
+            }
+        }
+        
+        // Update last update timestamp
+        function updateLastUpdate(timestamp) {
+            const elem = document.getElementById('lastUpdate');
+            const now = new Date(timestamp * 1000);
+            elem.textContent = `Zuletzt aktualisiert: ${now.toLocaleTimeString('de-DE')}`;
+        }
+        
+        // Set setpoint for a circuit
+        async function setSetpoint(circuitId) {
+            const inputElem = document.getElementById(`setpoint-input-${circuitId}`);
+            const newSetpoint = parseFloat(inputElem.value);
+            
+            if (!newSetpoint || isNaN(newSetpoint)) {
+                showError('Bitte geben Sie eine gültige Temperatur ein');
+                return;
+            }
+            
+            if (newSetpoint < config.setpoint_min || newSetpoint > config.setpoint_max) {
+                showError(`Solltemperatur muss zwischen ${config.setpoint_min}°C und ${config.setpoint_max}°C liegen`);
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/setpoint`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        circuit_id: circuitId,
+                        setpoint: newSetpoint
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                if (result.success) {
+                    inputElem.value = '';
+                    updateData();  // Refresh data
+                } else {
+                    showError('Fehler beim Setzen der Solltemperatur');
+                }
+            } catch (error) {
+                showError('Fehler beim Setzen der Solltemperatur: ' + error.message);
+            }
+        }
+        
+        // Show error message
+        function showError(message) {
+            const container = document.getElementById('errorContainer');
+            container.textContent = message;
+            container.classList.add('show');
+            
+            setTimeout(() => {
+                container.classList.remove('show');
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
